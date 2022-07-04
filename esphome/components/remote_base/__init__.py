@@ -1635,6 +1635,20 @@ HaierAction = ns.class_("HaierAction", RemoteTransmitterActionBase)
 HAIER_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_CODE): cv.All([cv.hex_uint8_t], cv.Length(min=13, max=13)),
+
+
+# Govee
+CONF_CMDOPT = "cmdopt"
+
+GoveeData, GoveeBinarySensor, GoveeTrigger, GoveeAction, GoveeDumper = declare_protocol(
+    "Govee"
+)
+GOVEE_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
+        cv.Required(CONF_COMMAND): cv.hex_uint8_t,
+        cv.Required(CONF_CMDOPT): cv.hex_uint16_t,
+        cv.Optional(CONF_REPEAT, default=13): cv.hex_uint32_t,
     }
 )
 
@@ -1659,3 +1673,39 @@ async def haier_action(var, config, args):
     vec_ = cg.std_vector.template(cg.uint8)
     template_ = await cg.templatable(config[CONF_CODE], args, vec_, vec_)
     cg.add(var.set_code(template_))
+
+
+@register_binary_sensor("govee", GoveeBinarySensor, GOVEE_SCHEMA)
+def govee_binary_sensor(var, config):
+    cg.add(
+        var.set_data(
+            cg.StructInitializer(
+                GoveeData,
+                ("address", config[CONF_ADDRESS]),
+                ("command", config[CONF_COMMAND]),
+                ("cmdopt", config[CONF_CMDOPT]),
+            )
+        )
+    )
+
+
+@register_trigger("govee", GoveeTrigger, GoveeData)
+def govee_trigger(var, config):
+    pass
+
+
+@register_dumper("govee", GoveeDumper)
+def govee_dumper(var, config):
+    pass
+
+
+@register_action("govee", GoveeAction, GOVEE_SCHEMA)
+async def govee_action(var, config, args):
+    template_ = await cg.templatable(config[CONF_ADDRESS], args, cg.uint16)
+    cg.add(var.set_address(template_))
+    template_ = await cg.templatable(config[CONF_COMMAND], args, cg.uint8)
+    cg.add(var.set_command(template_))
+    template_ = await cg.templatable(config[CONF_CMDOPT], args, cg.uint16)
+    cg.add(var.set_cmdopt(template_))
+    template_ = await cg.templatable(config[CONF_REPEAT], args, cg.uint32)
+    cg.add(var.set_repeat(template_))
