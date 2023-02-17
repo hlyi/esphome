@@ -68,6 +68,7 @@ def AUTO_LOAD():
 CONF_DISCOVER_IP = "discover_ip"
 CONF_IDF_SEND_ASYNC = "idf_send_async"
 CONF_SKIP_CERT_CN_CHECK = "skip_cert_cn_check"
+CONF_LEGACY_DEVINFO = "legacy_devinfo"
 
 
 def validate_message_just_topic(value):
@@ -298,6 +299,7 @@ CONFIG_SCHEMA = cv.All(
                 }
             ),
             cv.Optional(CONF_PUBLISH_NAN_AS_NONE, default=False): cv.boolean,
+            cv.Optional(CONF_LEGACY_DEVINFO, default=False): cv.boolean,
         }
     ),
     validate_config,
@@ -377,6 +379,35 @@ async def to_code(config):
 
     if config[CONF_USE_ABBREVIATIONS]:
         cg.add_define("USE_MQTT_ABBREVIATIONS")
+
+    devinfo_manufacturer = ""
+    devinfo_model = ""
+    if (
+        not config[CONF_LEGACY_DEVINFO]
+        and CORE.config
+        and CONF_ESPHOME in CORE.config
+        and CONF_PROJECT in CORE.config[CONF_ESPHOME]
+    ):
+        prjname = CORE.config[CONF_ESPHOME][CONF_PROJECT][CONF_NAME]
+        if prjname:
+            projinfo = prjname.split(".")
+            devinfo_manufacturer = projinfo[0]
+            if len(projinfo) > 1:
+                devinfo_model = projinfo[1]
+
+    if devinfo_manufacturer == "":
+        if "rp2040" in CORE.config:
+            devinfo_manufacturer = "Raspberry Pi"
+        else:
+            devinfo_manufacturer = "espressif"
+
+    if devinfo_model == "":
+        devinfo_model = cg.RawExpression("ESPHOME_BOARD")
+
+    cg.add_define("USE_MQTT_DEVICE_MANUFACTURER", devinfo_manufacturer)
+    cg.add_define("USE_MQTT_DEVICE_MODEL", devinfo_model)
+    if config[CONF_LEGACY_DEVINFO]:
+        cg.add_define("USE_MQTT_LEGACY_DEVINFO")
 
     birth_message = config[CONF_BIRTH_MESSAGE]
     if not birth_message:

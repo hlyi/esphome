@@ -190,6 +190,9 @@ bool MQTTComponent::send_discovery_() {
 
         device_info[MQTT_DEVICE_CONNECTIONS][0][0] = "mac";
         device_info[MQTT_DEVICE_CONNECTIONS][0][1] = mac;
+//        device_info[MQTT_DEVICE_MODEL] = USE_MQTT_DEVICE_MODEL;
+//        device_info[MQTT_DEVICE_MANUFACTURER] = USE_MQTT_DEVICE_MANUFACTURER;
+//        device_info[MQTT_DEVICE_SUGGESTED_AREA] = node_area;
       },
       this->qos_, discovery_info.retain);
 }
