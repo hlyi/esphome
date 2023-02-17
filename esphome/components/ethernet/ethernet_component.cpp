@@ -81,6 +81,7 @@ void EthernetComponent::setup() {
       this->phy_ = esp_eth_phy_new_ip101(&phy_config);
       break;
     }
+/*
     case ETHERNET_TYPE_JL1101: {
       this->phy_ = esp_eth_phy_new_jl1101(&phy_config);
       break;
@@ -94,6 +95,7 @@ void EthernetComponent::setup() {
 #endif
       break;
     }
+*/
     default: {
       this->mark_failed();
       return;
