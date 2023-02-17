@@ -1,15 +1,20 @@
-#ifdef USE_ARDUINO
-
 #include "web_server_base.h"
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
-#include <StreamString.h>
+#include "esphome/core/helpers.h"
 
+#ifdef USE_ARDUINO
+#include <StreamString.h>
 #ifdef USE_ESP32
 #include <Update.h>
 #endif
 #ifdef USE_ESP8266
 #include <Updater.h>
+#endif
+#endif
+
+#ifdef USE_ESP_IDF
+#include "esphome/components/web_server_idf/web_server_idf_ota.h"
 #endif
 
 namespace esphome {
@@ -24,14 +29,19 @@ void WebServerBase::add_handler(AsyncWebHandler *handler) {
     handler = new internal::AuthMiddlewareHandler(handler, &credentials_);
   }
   this->handlers_.push_back(handler);
-  if (this->server_ != nullptr)
+  if (this->server_ != nullptr) {
     this->server_->addHandler(handler);
+  }
 }
 
 void report_ota_error() {
+#ifdef USE_ARDUINO
   StreamString ss;
   Update.printError(ss);
   ESP_LOGW(TAG, "OTA Update failed! Error: %s", ss.c_str());
+#else
+  ESP_LOGW(TAG, "OTA Update failed! Error: %d", Update.get_error());
+#endif
 }
 
 void OTARequestHandler::handleUpload(AsyncWebServerRequest *request, const String &filename, size_t index,
@@ -45,10 +55,14 @@ void OTARequestHandler::handleUpload(AsyncWebServerRequest *request, const Strin
     // NOLINTNEXTLINE(readability-static-accessed-through-instance)
     success = Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000);
 #endif
-#ifdef USE_ESP32
-    if (Update.isRunning())
+#ifdef USE_ESP32_FRAMEWORK_ARDUINO
+    if (Update.isRunning()) {
       Update.abort();
+    }
     success = Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH);
+#endif
+#ifdef USE_ESP_IDF
+    success = Update.begin(OTA_SIZE_UNKNOWN);
 #endif
     if (!success) {
       report_ota_error();
@@ -91,9 +105,13 @@ void OTARequestHandler::handleRequest(AsyncWebServerRequest *request) {
   if (!Update.hasError()) {
     response = request->beginResponse(200, "text/plain", "Update Successful!");
   } else {
+#ifdef USE_ARDUINO
     StreamString ss;
     ss.print("Update Failed: ");
     Update.printError(ss);
+#else
+    std::string ss = str_sprintf("Update failed! Error: %d", Update.get_error());
+#endif
     response = request->beginResponse(200, "text/plain", ss);
   }
   response->addHeader("Connection", "close");
@@ -110,5 +128,3 @@ float WebServerBase::get_setup_priority() const {
 
 }  // namespace web_server_base
 }  // namespace esphome
-
-#endif  // USE_ARDUINO

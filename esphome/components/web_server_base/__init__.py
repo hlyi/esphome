@@ -5,7 +5,11 @@ from esphome.core import coroutine_with_priority, CORE
 
 CODEOWNERS = ["@OttoWinter"]
 DEPENDENCIES = ["network"]
-AUTO_LOAD = ["async_tcp"]
+
+if CORE.using_arduino:
+    AUTO_LOAD = ["async_tcp"]
+elif CORE.using_esp_idf:
+    AUTO_LOAD = ["web_server_idf"]
 
 web_server_base_ns = cg.esphome_ns.namespace("web_server_base")
 WebServerBase = web_server_base_ns.class_("WebServerBase", cg.Component)
@@ -23,9 +27,10 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    if CORE.is_esp32:
-        cg.add_library("WiFi", None)
-        cg.add_library("FS", None)
-        cg.add_library("Update", None)
-    # https://github.com/esphome/ESPAsyncWebServer/blob/master/library.json
-    cg.add_library("esphome/ESPAsyncWebServer-esphome", "2.1.0")
+    if CORE.using_arduino:
+        if CORE.is_esp32:
+            cg.add_library("WiFi", None)
+            cg.add_library("FS", None)
+            cg.add_library("Update", None)
+        # https://github.com/esphome/ESPAsyncWebServer/blob/master/library.json
+        cg.add_library("esphome/ESPAsyncWebServer-esphome", "2.1.0")
