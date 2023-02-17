@@ -13,6 +13,10 @@
 #endif
 #endif
 
+#ifdef USE_ESP_IDF
+#include "esphome/components/web_server_idf/web_server_idf_ota.h"
+#endif
+
 namespace esphome {
 namespace web_server_base {
 
@@ -35,6 +39,8 @@ void report_ota_error() {
   StreamString ss;
   Update.printError(ss);
   ESP_LOGW(TAG, "OTA Update failed! Error: %s", ss.c_str());
+#else
+  ESP_LOGW(TAG, "OTA Update failed! Error: %d", Update.get_error());
 #endif
 }
 
@@ -55,6 +61,9 @@ void OTARequestHandler::handleUpload(AsyncWebServerRequest *request, const Strin
       Update.abort();
     }
     success = Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH);
+#endif
+#ifdef USE_ESP_IDF
+    success = Update.begin(OTA_SIZE_UNKNOWN);
 #endif
     if (!success) {
       report_ota_error();
@@ -99,9 +108,13 @@ void OTARequestHandler::handleRequest(AsyncWebServerRequest *request) {
   if (!Update.hasError()) {
     response = request->beginResponse(200, "text/plain", "Update Successful!");
   } else {
+#ifdef USE_ARDUINO
     StreamString ss;
     ss.print("Update Failed: ");
     Update.printError(ss);
+#else
+    std::string ss = str_sprintf("Update failed! Error: %d", Update.get_error());
+#endif
     response = request->beginResponse(200, "text/plain", ss);
   }
   response->addHeader("Connection", "close");
