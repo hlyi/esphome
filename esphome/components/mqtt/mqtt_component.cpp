@@ -133,7 +133,11 @@ bool MQTTComponent::send_discovery_() {
           }
         }
 
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 2, 0) || defined(USE_MQTT_LEGACY_DEVINFO)
         const std::string &node_name = App.get_name();
+#else
+        const std::string &node_name = App.get_friendly_name();
+#endif
         if (discovery_info.object_id_generator == MQTT_DEVICE_NAME_OBJECT_ID_GENERATOR)
           root[MQTT_OBJECT_ID] = node_name + "_" + this->get_default_object_id_();
 
