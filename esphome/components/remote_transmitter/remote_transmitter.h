@@ -25,7 +25,9 @@ class RemoteTransmitterComponent : public remote_base::RemoteTransmitterBase,
   float get_setup_priority() const override { return setup_priority::DATA; }
 
   void set_carrier_duty_percent(uint8_t carrier_duty_percent) { this->carrier_duty_percent_ = carrier_duty_percent; }
-
+#ifdef USE_ESP32
+  void set_rmt_channel(int rmt_channel) { this->override_rmt_channel_ = rmt_channel; }
+#endif
  protected:
   void send_internal(uint32_t send_times, uint32_t send_wait) override;
 #if defined(USE_ESP8266) || defined(USE_LIBRETINY)
@@ -47,6 +49,7 @@ class RemoteTransmitterComponent : public remote_base::RemoteTransmitterBase,
   std::vector<rmt_item32_t> rmt_temp_;
   esp_err_t error_code_{ESP_OK};
   bool inverted_{false};
+  int override_rmt_channel_{-1};
 #endif
   uint8_t carrier_duty_percent_;
 };
