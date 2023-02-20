@@ -47,12 +47,16 @@ class RemoteReceiverComponent : public remote_base::RemoteReceiverBase,
   void set_buffer_size(uint32_t buffer_size) { this->buffer_size_ = buffer_size; }
   void set_filter_us(uint8_t filter_us) { this->filter_us_ = filter_us; }
   void set_idle_us(uint32_t idle_us) { this->idle_us_ = idle_us; }
+#ifdef USE_ESP32
+  void set_rmt_channel(int rmt_channel) { this->override_rmt_channel_ = rmt_channel; }
+#endif
 
  protected:
 #ifdef USE_ESP32
   void decode_rmt_(rmt_item32_t *item, size_t len);
   RingbufHandle_t ringbuf_;
   esp_err_t error_code_{ESP_OK};
+  int override_rmt_channel_ {-1};
 #endif
 
 #ifdef USE_ESP8266
