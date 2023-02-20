@@ -13,6 +13,7 @@ from esphome.const import (
     CONF_MEMORY_BLOCKS,
 )
 from esphome.core import CORE, TimePeriod
+CONF_RMT_CHANNEL = "rmt_channel"
 
 AUTO_LOAD = ["remote_base"]
 remote_receiver_ns = cg.esphome_ns.namespace("remote_receiver")
@@ -45,6 +46,7 @@ CONFIG_SCHEMA = remote_base.validate_triggers(
                 CONF_IDLE, default="10ms"
             ): cv.positive_time_period_microseconds,
             cv.Optional(CONF_MEMORY_BLOCKS, default=3): cv.Range(min=1, max=8),
+            cv.SplitDefault(CONF_RMT_CHANNEL, esp32=-1): cv.All( cv.Range(min=-1, max=7), cv.only_on_esp32),
         }
     ).extend(cv.COMPONENT_SCHEMA)
 )
@@ -70,3 +72,5 @@ async def to_code(config):
     cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
     cg.add(var.set_filter_us(config[CONF_FILTER]))
     cg.add(var.set_idle_us(config[CONF_IDLE]))
+    if CORE.is_esp32:
+        cg.add(var.set_rmt_channel(config[CONF_RMT_CHANNEL]))
