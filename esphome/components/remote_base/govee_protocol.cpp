@@ -14,7 +14,7 @@ static const uint32_t BIT_ZERO_LOW_US = 844;
 static const uint32_t REPEAT_DETECTION_WINDOW_MILLIS = 2000;  // two seconds
 
 void GoveeProtocol::encode(RemoteTransmitData *dst, const GoveeData &data) {
-  dst->reserve(data.repeat * 49);
+  dst->reserve(data.repeat * 98);
 
   uint64_t raw_code;
   uint16_t crc;
@@ -24,10 +24,10 @@ void GoveeProtocol::encode(RemoteTransmitData *dst, const GoveeData &data) {
   crc <<= 1;
   crc |= 0xa1;
 
-  raw_code = (uint64_t) data.address << 32;
-  raw_code |= data.command << 24;
-  raw_code |= data.cmdopt << 8;
-  raw_code |= crc & 0xff;
+  raw_code = ((uint64_t)data.address & 0xffff) <<32;
+  raw_code |= ((uint64_t)data.command & 0xff ) << 24;
+  raw_code |= ((uint64_t)data.cmdopt & 0xffff ) << 8;
+  raw_code |= (uint64_t)crc & 0xff;
 
   for (int i = 0; i < data.repeat; i++) {
     dst->item(HEADER_HIGH_US, HEADER_LOW_US);
@@ -55,6 +55,7 @@ optional<GoveeData> GoveeProtocol::decode(RemoteReceiveData src) {
       .command = 0,
       .cmdopt = 0,
       .crc = 0,
+      .repeat = 6,
   };
   if (!src.expect_item(HEADER_HIGH_US, HEADER_LOW_US))
     return {};
