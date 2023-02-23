@@ -21,8 +21,8 @@ void IRAM_ATTR HOT RemoteReceiverNFComponentStore::gpio_intr(RemoteReceiverNFCom
   arg->last_edge_time = now;
   uint32_t buffer_size_limit;
   // filter glitch
-  if (time_since_change <= arg->filter_us)
-    return;
+//  if (time_since_change <= arg->filter_us)
+//    return;
   buffer_size_limit = arg->buffer_size - 1;  // avoid % operation as it is costly
   lvl_high = arg->space_lvl_high;
   switch (arg->sync_stage) {
@@ -245,7 +245,7 @@ void RemoteReceiverNFComponent::loop() {
     if ( (!early_proc) && dist< (s.buffer_size/2)) return;
   }
 
-  ESP_LOGD(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now, s.buffer[write_at]);
+  ESP_LOGVV(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now, s.buffer[write_at]);
   // Skip first value, it's from the previous idle level
   uint32_t prev = INC_BUFFER_PTR(s.buffer_read_at);
   s.buffer_read_at = INC_BUFFER_PTR(prev);
@@ -255,9 +255,8 @@ void RemoteReceiverNFComponent::loop() {
     s.buffer_read_at = INC_BUFFER_PTR(prev);
   }
   const uint32_t reserve_size = 1 + (s.buffer_size + write_at - s.buffer_read_at) % s.buffer_size;
-  this->temp_.clear();
-  this->temp_.reserve(reserve_size);
   int32_t multiplier = s.buffer_read_at & 1 ? -1 : 1;
+  std::vector<int32_t> buf_(reserve_size);
 
   for (uint32_t i = 0; prev != write_at; i++) {
     int32_t read_at_val = s.buffer[s.buffer_read_at];
@@ -284,13 +283,33 @@ void RemoteReceiverNFComponent::loop() {
 
     ESP_LOGVV(TAG, "  i=%u buffer[%u]=%u - buffer[%u]=%u -> %d", i, s.buffer_read_at, s.buffer[s.buffer_read_at], prev,
               s.buffer[prev], multiplier * delta);
-    this->temp_.push_back(multiplier * delta);
+    buf_.push_back(multiplier * delta);
     prev = s.buffer_read_at;
     s.buffer_read_at = INC_BUFFER_PTR(prev);
     multiplier *= -1;
   }
   s.buffer_read_at = (s.buffer_size + s.buffer_read_at - 1) % s.buffer_size;
-  this->temp_.push_back(this->idle_us_ * multiplier);
+  buf_.push_back(this->idle_us_ * multiplier);
+
+  // now do glitch filtering
+  this->temp_.clear();
+  this->temp_.reserve(buf_.size());
+  int cnt = 0;
+  for( auto it = buf_.begin(); it!= buf_.end(); ++ it ) {
+    int32_t val =  *it;
+    if ( abs(val) < this->filter_us_ ) {
+       it++;
+       if ( cnt == 0 ) {
+	       this->temp_.push_back(*it - val ) ;
+	       cnt ++;
+       }else {
+	       this->temp_[cnt-1] += *it - val;
+       }
+    }else {
+	   this->temp_.push_back(val);
+	   cnt++;
+    }
+  }
 
   this->call_listeners_dumpers_();
 }
