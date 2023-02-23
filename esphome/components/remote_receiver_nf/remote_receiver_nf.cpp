@@ -4,7 +4,8 @@
 #include "esphome/core/helpers.h"
 
 #define INC_BUFFER_PTR(var) ((var) == buffer_size_limit ? 0 : ((var) + 1))
-#define MIN_NONIDLE_DIST 6
+static const uint8_t MIN_NONIDLE_DIST = 6;
+;
 
 namespace esphome {
 namespace remote_receiver_nf {
@@ -21,8 +22,8 @@ void IRAM_ATTR HOT RemoteReceiverNFComponentStore::gpio_intr(RemoteReceiverNFCom
   arg->last_edge_time = now;
   uint32_t buffer_size_limit;
   // filter glitch
-//  if (time_since_change <= arg->filter_us)
-//    return;
+  //  if (time_since_change <= arg->filter_us)
+  //    return;
   buffer_size_limit = arg->buffer_size - 1;  // avoid % operation as it is costly
   lvl_high = arg->space_lvl_high;
   switch (arg->sync_stage) {
@@ -61,7 +62,7 @@ void IRAM_ATTR HOT RemoteReceiverNFComponentStore::gpio_intr(RemoteReceiverNFCom
       // sync detected, need push two previous timestamps into ring buffer
       next = INC_BUFFER_PTR(arg->buffer_write_at);
       if (next == read_at)
-          return;  // fifo full skip
+        return;  // fifo full skip
       if (level != (next & 1)) {
         // noisy signal could park idle at wrong polarity
         // fill in previous value to crete 0 delta then filter by main loop
@@ -90,21 +91,22 @@ void IRAM_ATTR HOT RemoteReceiverNFComponentStore::gpio_intr(RemoteReceiverNFCom
         }
         return;
       }
-      if ( level != lvl_high ) {
-	// mark detected
+      if (level != lvl_high) {
+        // mark detected
         // if find another sync, keep as is
-	if ( (time_since_change > arg->sync_space_min_us) && (time_since_change < arg->sync_space_max_us) ) break;
-        if ((time_since_change > arg->rep_space_min_us) ) {
+        if ((time_since_change > arg->sync_space_min_us) && (time_since_change < arg->sync_space_max_us))
+          break;
+        if ((time_since_change > arg->rep_space_min_us)) {
           // start of repeat pattern
           // insert special marker
           next = INC_BUFFER_PTR(arg->buffer_write_at);
           if (next == read_at)
             return;
 
-          if ( level != (next & 1 ) ) {
+          if (level != (next & 1)) {
             // in case misaligned due to fifo full
-            arg->buffer[next] =
-                arg->buffer[arg->buffer_write_at];  // duplicate mark time to create zero delay, will be filter in main loop
+            arg->buffer[next] = arg->buffer[arg->buffer_write_at];  // duplicate mark time to create zero delay, will be
+                                                                    // filter in main loop
             arg->buffer_write_at = next;
             next = INC_BUFFER_PTR(arg->buffer_write_at);
             if (next == read_at)
@@ -130,7 +132,7 @@ void IRAM_ATTR HOT RemoteReceiverNFComponentStore::gpio_intr(RemoteReceiverNFCom
   next = INC_BUFFER_PTR(arg->buffer_write_at);
   if (next == read_at)
     return;
-  if ( level != (next & 1 ) ) {
+  if (level != (next & 1)) {
     // in case misaligned due to fifo full
     arg->buffer[next] =
         arg->buffer[arg->buffer_write_at];  // duplicate mark time to create zero delay, will be filter in main loop
@@ -202,8 +204,8 @@ void RemoteReceiverNFComponent::loop() {
   if (dist <= 1)
     return;
   const uint32_t now = micros();
-  const bool idle_cond = ( (now - s.buffer[write_at]) > this->idle_us_ ) && (s.buffer[write_at]!=-1);
-  if (!idle_cond && ((this->early_check_thres_ == 0) || (this->early_check_thres_ > dist) )) {
+  const bool idle_cond = ((now - s.buffer[write_at]) > this->idle_us_) && (s.buffer[write_at] != -1);
+  if (!idle_cond && ((this->early_check_thres_ == 0) || (this->early_check_thres_ > dist))) {
     // The last change was fewer than the configured idle time ago.
     return;
   }
@@ -214,38 +216,41 @@ void RemoteReceiverNFComponent::loop() {
     return;
   }
 
-/*
-  ESP_LOGD(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now,
-            s.buffer[write_at]);
-*/
+  /*
+    ESP_LOGD(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now,
+              s.buffer[write_at]);
+  */
 
-  if ( !idle_cond) {
+  if (!idle_cond) {
     bool early_proc = false;
-    if (dist < MIN_NONIDLE_DIST ) return;
+    if (dist < MIN_NONIDLE_DIST)
+      return;
     // because preview, need search for repeat marks or sync pattern
-    uint32_t prev_time = s.buffer[(s.buffer_read_at+MIN_NONIDLE_DIST-1)%s.buffer_size];
-    for (int j = (s.buffer_read_at+MIN_NONIDLE_DIST)%s.buffer_size; j != write_at; j = INC_BUFFER_PTR(j) ){
-       uint32_t chk_time = s.buffer[j] ;
-       if ( (chk_time == -1) && (j != write_at ) && s.buffer[INC_BUFFER_PTR(j)] == -1 ) {
-         early_proc = true;
-//	 ESP_LOGD(TAG, "Found Special break at %d, %d,%d",j, prev_time, chk_time );
-         break;
-       }
-       uint32_t pulse_width = chk_time - prev_time;
-       prev_time = chk_time;
-       if ( ((j &1)!= this->space_lvl_high_) && (pulse_width > this->sync_space_min_us_) && (pulse_width < this->sync_space_max_us_ ) ){
-         early_proc = true;
-//	 ESP_LOGD(TAG, "Found Sync");
-         break;
-       }
-
+    uint32_t prev_time = s.buffer[(s.buffer_read_at + MIN_NONIDLE_DIST - 1) % s.buffer_size];
+    for (int j = (s.buffer_read_at + MIN_NONIDLE_DIST) % s.buffer_size; j != write_at; j = INC_BUFFER_PTR(j)) {
+      uint32_t chk_time = s.buffer[j];
+      if ((chk_time == -1) && (j != write_at) && s.buffer[INC_BUFFER_PTR(j)] == -1) {
+        early_proc = true;
+        //         ESP_LOGD(TAG, "Found Special break at %d, %d,%d",j, prev_time, chk_time );
+        break;
+      }
+      uint32_t pulse_width = chk_time - prev_time;
+      prev_time = chk_time;
+      if (((j & 1) != this->space_lvl_high_) && (pulse_width > this->sync_space_min_us_) &&
+          (pulse_width < this->sync_space_max_us_)) {
+        early_proc = true;
+        //         ESP_LOGD(TAG, "Found Sync");
+        break;
+      }
     }
-//    ESP_LOGD(TAG, "Dist=%d, found=%d", dist, early_proc);
+    //    ESP_LOGD(TAG, "Dist=%d, found=%d", dist, early_proc);
     // if line is too noisy, after fill out half of the buffer, force to process
-    if ( (!early_proc) && dist< (s.buffer_size/2)) return;
+    if ((!early_proc) && dist < (s.buffer_size / 2))
+      return;
   }
 
-  ESP_LOGVV(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now, s.buffer[write_at]);
+  ESP_LOGVV(TAG, "read_at=%u write_at=%u dist=%u now=%u end=%u", s.buffer_read_at, write_at, dist, now,
+            s.buffer[write_at]);
   // Skip first value, it's from the previous idle level
   uint32_t prev = INC_BUFFER_PTR(s.buffer_read_at);
   s.buffer_read_at = INC_BUFFER_PTR(prev);
@@ -256,7 +261,7 @@ void RemoteReceiverNFComponent::loop() {
   }
   const uint32_t reserve_size = 1 + (s.buffer_size + write_at - s.buffer_read_at) % s.buffer_size;
   int32_t multiplier = s.buffer_read_at & 1 ? -1 : 1;
-  std::vector<int32_t> buf_(reserve_size);
+  std::vector<int32_t> buf(reserve_size);
 
   for (uint32_t i = 0; prev != write_at; i++) {
     int32_t read_at_val = s.buffer[s.buffer_read_at];
@@ -272,9 +277,9 @@ void RemoteReceiverNFComponent::loop() {
     }
     // find sync space
     int32_t delta2 = s.buffer[nxt2_read_at] - nxt_read_at_val;
-    if ( ( ( nxt_read_at & 1) == this->space_lvl_high_ )
-	 && ( nxt_read_at != write_at )
-         && ( delta2 > this->sync_space_min_us_ ) && ( delta2 < this->sync_space_max_us_ ) )break;
+    if (((nxt_read_at & 1) == this->space_lvl_high_) && (nxt_read_at != write_at) &&
+        (delta2 > this->sync_space_min_us_) && (delta2 < this->sync_space_max_us_))
+      break;
 
     if (uint32_t(delta) >= this->idle_us_) {
       // already found a space longer than idle. There must have been two pulses
@@ -283,38 +288,38 @@ void RemoteReceiverNFComponent::loop() {
 
     ESP_LOGVV(TAG, "  i=%u buffer[%u]=%u - buffer[%u]=%u -> %d", i, s.buffer_read_at, s.buffer[s.buffer_read_at], prev,
               s.buffer[prev], multiplier * delta);
-    buf_.push_back(multiplier * delta);
+    buf.push_back(multiplier * delta);
     prev = s.buffer_read_at;
     s.buffer_read_at = INC_BUFFER_PTR(prev);
     multiplier *= -1;
   }
   s.buffer_read_at = (s.buffer_size + s.buffer_read_at - 1) % s.buffer_size;
-  buf_.push_back(this->idle_us_ * multiplier);
+  buf.push_back(this->idle_us_ * multiplier);
 
   // now do glitch filtering
   this->temp_.clear();
-  this->temp_.reserve(buf_.size());
+  this->temp_.reserve(buf.size());
   int cnt = 0;
-  for( auto it = buf_.begin(); it!= buf_.end(); ++ it ) {
-    int32_t val =  *it;
-    if ( abs(val) < this->filter_us_ ) {
-       if ( it != buf_.end() ) {
-          it++;
-          if ( cnt == 0 ) {
-                  this->temp_.push_back(*it - val ) ;
-                  cnt ++;
-          }else {
-                  this->temp_[cnt-1] += *it - val;
-          }
-       }else {
-	       // single pulse, just drop it.
-	       if ( cnt != 0 ) {
-                  this->temp_[cnt-1] -= val;
-	       }
-       }
-    }else {
-	   this->temp_.push_back(val);
-	   cnt++;
+  for (auto it = buf.begin(); it != buf.end(); ++it) {
+    int32_t val = *it;
+    if (abs(val) < this->filter_us_) {
+      it++;
+      if (it != buf.end()) {
+        if (cnt == 0) {
+          this->temp_.push_back(*it - val);
+          cnt++;
+        } else {
+          this->temp_[cnt - 1] += *it - val;
+        }
+      } else {
+        // single pulse, just drop it.
+        if (cnt != 0) {
+          this->temp_[cnt - 1] -= val;
+        }
+      }
+    } else {
+      this->temp_.push_back(val);
+      cnt++;
     }
   }
 
