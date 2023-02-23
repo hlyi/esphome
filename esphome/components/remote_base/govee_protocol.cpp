@@ -24,10 +24,10 @@ void GoveeProtocol::encode(RemoteTransmitData *dst, const GoveeData &data) {
   crc <<= 1;
   crc |= 0xa1;
 
-  raw_code = ((uint64_t)data.address & 0xffff) <<32;
-  raw_code |= ((uint64_t)data.command & 0xff ) << 24;
-  raw_code |= ((uint64_t)data.cmdopt & 0xffff ) << 8;
-  raw_code |= (uint64_t)crc & 0xff;
+  raw_code = ((uint64_t) data.address & 0xffff) << 32;
+  raw_code |= ((uint64_t) data.command & 0xff) << 24;
+  raw_code |= ((uint64_t) data.cmdopt & 0xffff) << 8;
+  raw_code |= (uint64_t) crc & 0xff;
 
   for (int i = 0; i < data.repeat; i++) {
     dst->item(HEADER_HIGH_US, HEADER_LOW_US);
@@ -58,10 +58,12 @@ optional<GoveeData> GoveeProtocol::decode(RemoteReceiveData src) {
       .repeat = 6,
   };
 
-  uint32_t	size = src.size();
-//  ESP_LOGD(TAG, "Data size = %d, %d, %d, %d, %d, %d, %d", size, src[0], src[1], src[size-4],src[size-3],src[size-2],src[size-1] );
+  uint32_t size = src.size();
+  //  ESP_LOGD(TAG, "Data size = %d, %d, %d, %d, %d, %d, %d", size, src[0], src[1],
+  //  src[size-4],src[size-3],src[size-2],src[size-1] );
 
-  if ( (size < 97) || (size > 104) ) return {};
+  if ((size < 97) || (size > 104))
+    return {};
 
   if (!src.expect_item(HEADER_HIGH_US, HEADER_LOW_US))
     return {};
