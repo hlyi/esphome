@@ -8,7 +8,7 @@ namespace esphome {
 namespace remote_base {
 
 struct EV1527Data {
-  uint16_t address;
+  uint32_t address;
   uint8_t command;
   uint8_t repeat;
 };
