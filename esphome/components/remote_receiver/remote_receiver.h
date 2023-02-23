@@ -56,7 +56,7 @@ class RemoteReceiverComponent : public remote_base::RemoteReceiverBase,
   void decode_rmt_(rmt_item32_t *item, size_t len);
   RingbufHandle_t ringbuf_;
   esp_err_t error_code_{ESP_OK};
-  int override_rmt_channel_ {-1};
+  int override_rmt_channel_{-1};
 #endif
 
 #ifdef USE_ESP8266
