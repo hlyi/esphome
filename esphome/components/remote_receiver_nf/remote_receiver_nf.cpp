@@ -298,13 +298,19 @@ void RemoteReceiverNFComponent::loop() {
   for( auto it = buf_.begin(); it!= buf_.end(); ++ it ) {
     int32_t val =  *it;
     if ( abs(val) < this->filter_us_ ) {
-       it++;
-       if ( cnt == 0 ) {
-	       this->temp_.push_back(*it - val ) ;
-	       cnt ++;
+       if ( it != buf_.end() ) {
+          it++;
+          if ( cnt == 0 ) {
+                  this->temp_.push_back(*it - val ) ;
+                  cnt ++;
+          }else {
+                  this->temp_[cnt-1] += *it - val;
+          }
        }else {
-	       this->temp_[cnt-1] += *it - val;
-       }
+	       // single pulse, just drop it.
+	       if ( cnt != 0 ) {
+                  tmp->tmp_[cnt-1] -= val;
+	       }
     }else {
 	   this->temp_.push_back(val);
 	   cnt++;
