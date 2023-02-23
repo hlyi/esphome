@@ -11,7 +11,7 @@ static const uint32_t HEADER_LOW_US = 8719;
 static const uint32_t BIT_TOTAL_US = 1125;
 static const uint32_t BIT_ONE_LOW_US = 281;
 static const uint32_t BIT_ZERO_LOW_US = 844;
-static const uint32_t REPEAT_DETECTION_WINDOW_MILLIS = 2000;  // two seconds
+static const uint32_t REPEAT_DETECTION_WINDOW_MILLIS = 1000;  // one seconds
 
 void GoveeProtocol::encode(RemoteTransmitData *dst, const GoveeData &data) {
   dst->reserve(data.repeat * 98);
@@ -57,6 +57,12 @@ optional<GoveeData> GoveeProtocol::decode(RemoteReceiveData src) {
       .crc = 0,
       .repeat = 6,
   };
+
+  uint32_t	size = src.size();
+//  ESP_LOGD(TAG, "Data size = %d, %d, %d, %d, %d, %d, %d", size, src[0], src[1], src[size-4],src[size-3],src[size-2],src[size-1] );
+
+  if ( (size < 97) || (size > 104) ) return {};
+
   if (!src.expect_item(HEADER_HIGH_US, HEADER_LOW_US))
     return {};
 
@@ -91,7 +97,7 @@ optional<GoveeData> GoveeProtocol::decode(RemoteReceiveData src) {
     return {};
   }
 
-  // Govee sensors send an event 12-13 times, repeatition should be filtered.
+  // Govee sensors send an event about 12-13 times, repeatition should be filtered.
   uint32_t now = millis();
   if (((now - last_decoded_millis) < REPEAT_DETECTION_WINDOW_MILLIS) && (last_decoded_raw == raw_code)) {
     // repeatition detected,ignore the code
