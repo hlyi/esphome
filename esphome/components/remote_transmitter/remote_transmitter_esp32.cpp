@@ -28,7 +28,8 @@ void RemoteTransmitterComponent::dump_config() {
 }
 
 void RemoteTransmitterComponent::configure_rmt_() {
-  if ( override_rmt_channel_ >= 0 ) this->channel_ = rmt_channel_t(override_rmt_channel_);
+  if (override_rmt_channel_ >= 0)
+    this->channel_ = rmt_channel_t(override_rmt_channel_);
   rmt_config_t c{};
 
   this->config_rmt(c);

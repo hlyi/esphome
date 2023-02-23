@@ -42,7 +42,7 @@ def validate_timing (value):
 
 MULTI_CONF = True
 CONFIG_SCHEMA = cv.All( remote_base.validate_triggers(
-    cv.Schema( 
+    cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(RemoteReceiverNFComponent),
             cv.Required(CONF_PIN): cv.All(pins.internal_gpio_input_pin_schema),

@@ -11,7 +11,8 @@ static const char *const TAG = "remote_receiver.esp32";
 
 void RemoteReceiverComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Remote Receiver...");
-  if ( override_rmt_channel_ >= 0 ) this->channel_ = rmt_channel_t(override_rmt_channel_);
+  if (override_rmt_channel_ >= 0)
+    this->channel_ = rmt_channel_t(override_rmt_channel_);
   this->pin_->setup();
   rmt_config_t rmt{};
   this->config_rmt(rmt);

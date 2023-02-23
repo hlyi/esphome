@@ -18,8 +18,8 @@ void EV1527Protocol::encode(RemoteTransmitData *dst, const EV1527Data &data) {
 
   uint32_t raw_code;
 
-  raw_code = (data.address & 0xfffff) <<4;
-  raw_code |= (uint32_t)data.command & 0xf ;
+  raw_code = (data.address & 0xfffff) << 4;
+  raw_code |= (uint32_t) data.command & 0xf;
 
   for (int i = 0; i < data.repeat; i++) {
     dst->item(HEADER_HIGH_US, HEADER_LOW_US);
@@ -49,9 +49,10 @@ optional<EV1527Data> EV1527Protocol::decode(RemoteReceiveData src) {
   };
 
   uint32_t size = src.size();
-//  ESP_LOGD(TAG, "Data size = %d", size );
+  //  ESP_LOGD(TAG, "Data size = %d", size );
 
-  if ( (size < 47 ) || (size > 60) ) return {};
+  if ((size < 47) || (size > 60))
+    return {};
   if (!src.expect_item(HEADER_HIGH_US, HEADER_LOW_US))
     return {};
 
@@ -70,7 +71,7 @@ optional<EV1527Data> EV1527Protocol::decode(RemoteReceiveData src) {
     return {};
   }
 
-  ESP_LOGD(TAG, "Data Received = %06x", raw_code );
+  ESP_LOGD(TAG, "Data Received = %06x", raw_code);
   data.address = (raw_code >> 4) & 0xfffff;
   data.command = raw_code & 0xf;
 
