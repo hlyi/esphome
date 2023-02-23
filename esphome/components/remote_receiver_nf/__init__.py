@@ -29,15 +29,26 @@ RemoteReceiverNFComponent = remote_receiver_nf_ns.class_(
     "RemoteReceiverNFComponent", remote_base.RemoteReceiverBase, cg.Component
 )
 
+def validate_timing (value):
+    if value[CONF_FILTER] >= value[CONF_REPEAT_SPACE_MIN] :
+         raise cv.Invalid("filter has to be smaller than repeat_space_min")
+    if value[CONF_REPEAT_SPACE_MIN] >= value[CONF_SYNC_SPACE_MIN] :
+         raise cv.Invalid("repeat_space_min has to be smaller than sync_space_min")
+    if value[CONF_SYNC_SPACE_MIN] >= value[CONF_SYNC_SPACE_MAX] :
+         raise cv.Invalid("sync_space_min has to be smaller than sync_space_max")
+    if value[CONF_SYNC_SPACE_MAX] >= value[CONF_IDLE] :
+         raise cv.Invalid("sync_space_max has to be smaller than idle")
+    return value
+
 MULTI_CONF = True
-CONFIG_SCHEMA = remote_base.validate_triggers(
-    cv.Schema(
+CONFIG_SCHEMA = cv.All( remote_base.validate_triggers(
+    cv.Schema( 
         {
             cv.GenerateID(): cv.declare_id(RemoteReceiverNFComponent),
             cv.Required(CONF_PIN): cv.All(pins.internal_gpio_input_pin_schema),
             cv.Optional(CONF_DUMP, default=[]): remote_base.validate_dumpers,
             cv.Optional(CONF_TOLERANCE, default=25): cv.All(
-                cv.percentage_int, cv.Range(min=0)
+                cv.percentage_int, cv.Range(min=0, max=100)
             ),
             cv.SplitDefault(
                 CONF_BUFFER_SIZE, esp32="10000b", esp8266="1000b"
@@ -63,6 +74,8 @@ CONFIG_SCHEMA = remote_base.validate_triggers(
             cv.Optional(CONF_MEMORY_BLOCKS, default=3): cv.Range(min=1, max=8),
         }
     ).extend(cv.COMPONENT_SCHEMA)
+),
+ validate_timing
 )
 
 
