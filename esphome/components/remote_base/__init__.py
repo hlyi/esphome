@@ -1571,7 +1571,7 @@ GOVEE_SCHEMA = cv.Schema(
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
         cv.Required(CONF_COMMAND): cv.hex_uint8_t,
         cv.Required(CONF_CMDOPT): cv.hex_uint16_t,
-        cv.Optional(CONF_REPEAT, default=13): cv.hex_uint32_t,
+        cv.Optional(CONF_REPEAT, default=7): cv.hex_uint8_t,
     }
 )
 
@@ -1608,5 +1608,48 @@ async def govee_action(var, config, args):
     cg.add(var.set_command(template_))
     template_ = await cg.templatable(config[CONF_CMDOPT], args, cg.uint16)
     cg.add(var.set_cmdopt(template_))
-    template_ = await cg.templatable(config[CONF_REPEAT], args, cg.uint32)
+    template_ = await cg.templatable(config[CONF_REPEAT], args, cg.uint8)
     cg.add(var.set_repeat(template_))
+
+
+# EV1527
+EV1527Data, EV1527BinarySensor, EV1527Trigger, EV1527Action, EV1527Dumper = declare_protocol(
+    "EV1527"
+)
+EV1527_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_ADDRESS): cv.int_range(min=0, max=(1<<24)-1),
+        cv.Required(CONF_COMMAND): cv.int_range(min=0, max=15),
+        cv.Optional(CONF_REPEAT, default=4): cv.hex_uint8_t,
+    }
+)
+
+@register_binary_sensor("ev1527", EV1527BinarySensor, EV1527_SCHEMA)
+def ev1527_binary_sensor(var, config):
+    cg.add(
+        var.set_data(
+            cg.StructInitializer(
+                EV1527Data,
+                ("address", config[CONF_ADDRESS]),
+                ("command", config[CONF_COMMAND]),
+            )
+        )
+    )
+
+@register_trigger("ev1527", EV1527Trigger, EV1527Data)
+def ev1527_trigger(var, config):
+    pass
+
+@register_dumper("ev1527", EV1527Dumper)
+def ev1527_dumper(var, config):
+    pass
+
+@register_action("ev1527", EV1527Action, EV1527_SCHEMA)
+async def ev1527_action(var, config, args):
+    template_ = await cg.templatable(config[CONF_ADDRESS], args, cg.uint32)
+    cg.add(var.set_address(template_))
+    template_ = await cg.templatable(config[CONF_COMMAND], args, cg.uint8)
+    cg.add(var.set_command(template_))
+    template_ = await cg.templatable(config[CONF_REPEAT], args, cg.uint8)
+    cg.add(var.set_repeat(template_))
+
