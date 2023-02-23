@@ -309,8 +309,9 @@ void RemoteReceiverNFComponent::loop() {
        }else {
 	       // single pulse, just drop it.
 	       if ( cnt != 0 ) {
-                  tmp->tmp_[cnt-1] -= val;
+                  this->temp_[cnt-1] -= val;
 	       }
+       }
     }else {
 	   this->temp_.push_back(val);
 	   cnt++;
