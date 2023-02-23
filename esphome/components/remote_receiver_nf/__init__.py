@@ -69,7 +69,7 @@ CONFIG_SCHEMA = cv.All( remote_base.validate_triggers(
             cv.Optional(
                 CONF_REPEAT_SPACE_MIN, default="1100us"
             ): cv.positive_time_period_microseconds,
-            cv.Optional(CONF_EARLY_CHECK_THRES, default=0): cv.int_,
+            cv.Optional(CONF_EARLY_CHECK_THRES, default=40): cv.int_,
             cv.Optional(CONF_NUM_EDGE_MIN, default=16): cv.int_,
             cv.Optional(CONF_MEMORY_BLOCKS, default=3): cv.Range(min=1, max=8),
         }
