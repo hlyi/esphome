@@ -19,9 +19,8 @@ CODEOWNERS = ["@hlyi"]
 CONF_SYNC_SPACE_IS_HIGH = "sync_space_is_high"
 CONF_SYNC_SPACE_MIN = "sync_space_min"
 CONF_SYNC_SPACE_MAX = "sync_space_max"
-CONF_REPEAT_SPACE_MIN = "repeat_space_min"
-CONF_EARLY_CHECK_THRES = "early_check_thres"
 CONF_NUM_EDGE_MIN = "num_edge_min"
+CONF_NUM_EDGE_MAX = "num_edge_max"
 
 AUTO_LOAD = ["remote_base"]
 remote_receiver_nf_ns = cg.esphome_ns.namespace("remote_receiver_nf")
@@ -30,10 +29,8 @@ RemoteReceiverNFComponent = remote_receiver_nf_ns.class_(
 )
 
 def validate_timing (value):
-    if value[CONF_FILTER] >= value[CONF_REPEAT_SPACE_MIN] :
-         raise cv.Invalid("filter has to be smaller than repeat_space_min")
-    if value[CONF_REPEAT_SPACE_MIN] >= value[CONF_SYNC_SPACE_MIN] :
-         raise cv.Invalid("repeat_space_min has to be smaller than sync_space_min")
+    if value[CONF_FILTER] >= value[CONF_SYNC_SPACE_MIN] :
+         raise cv.Invalid("filter has to be smaller than sync_space_min")
     if value[CONF_SYNC_SPACE_MIN] >= value[CONF_SYNC_SPACE_MAX] :
          raise cv.Invalid("sync_space_min has to be smaller than sync_space_max")
     if value[CONF_SYNC_SPACE_MAX] >= value[CONF_IDLE] :
@@ -66,10 +63,7 @@ CONFIG_SCHEMA = cv.All( remote_base.validate_triggers(
             cv.Optional(
                 CONF_SYNC_SPACE_MAX, default="10ms"
             ): cv.positive_time_period_microseconds,
-            cv.Optional(
-                CONF_REPEAT_SPACE_MIN, default="1100us"
-            ): cv.positive_time_period_microseconds,
-            cv.Optional(CONF_EARLY_CHECK_THRES, default=40): cv.int_,
+            cv.Optional(CONF_NUM_EDGE_MAX, default=200): cv.Range(min=20, max=400),
             cv.Optional(CONF_NUM_EDGE_MIN, default=16): cv.int_,
             cv.Optional(CONF_MEMORY_BLOCKS, default=3): cv.Range(min=1, max=8),
         }
@@ -100,6 +94,5 @@ async def to_code(config):
     cg.add(var.set_space_lvl_high(config[CONF_SYNC_SPACE_IS_HIGH]))
     cg.add(var.set_sync_space_min_us(config[CONF_SYNC_SPACE_MIN]))
     cg.add(var.set_sync_space_max_us(config[CONF_SYNC_SPACE_MAX]))
-    cg.add(var.set_rep_space_min_us(config[CONF_REPEAT_SPACE_MIN]))
-    cg.add(var.set_early_check_thres(config[CONF_EARLY_CHECK_THRES]))
     cg.add(var.set_num_edge_min(config[CONF_NUM_EDGE_MIN]))
+    cg.add(var.set_num_edge_max(config[CONF_NUM_EDGE_MAX]))
