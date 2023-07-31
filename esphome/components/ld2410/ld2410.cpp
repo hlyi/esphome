@@ -25,8 +25,7 @@ void LD2410Component::dump_config() {
   this->set_config_mode_(true);
   this->get_version_();
   this->set_config_mode_(false);
-  ESP_LOGCONFIG(TAG, "  Firmware Version : %u.%u.%u%u%u%u", this->version_[0], this->version_[1], this->version_[2],
-                this->version_[3], this->version_[4], this->version_[5]);
+  ESP_LOGCONFIG(TAG, "  Firmware Version : %u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
 }
 
 void LD2410Component::setup() {
@@ -34,19 +33,12 @@ void LD2410Component::setup() {
   this->set_config_mode_(true);
   this->set_max_distances_timeout_(this->max_move_distance_, this->max_still_distance_, this->timeout_);
   // Configure Gates sensitivity
-  this->set_gate_threshold_(0, this->rg0_move_threshold_, this->rg0_still_threshold_);
-  this->set_gate_threshold_(1, this->rg1_move_threshold_, this->rg1_still_threshold_);
-  this->set_gate_threshold_(2, this->rg2_move_threshold_, this->rg2_still_threshold_);
-  this->set_gate_threshold_(3, this->rg3_move_threshold_, this->rg3_still_threshold_);
-  this->set_gate_threshold_(4, this->rg4_move_threshold_, this->rg4_still_threshold_);
-  this->set_gate_threshold_(5, this->rg5_move_threshold_, this->rg5_still_threshold_);
-  this->set_gate_threshold_(6, this->rg6_move_threshold_, this->rg6_still_threshold_);
-  this->set_gate_threshold_(7, this->rg7_move_threshold_, this->rg7_still_threshold_);
-  this->set_gate_threshold_(8, this->rg8_move_threshold_, this->rg8_still_threshold_);
+  for ( int i = 0; i <9; i++ ) {
+    this->set_gate_threshold_(i, this->rg_move_threshold_[i], this->rg_still_threshold_[i]);
+  }
   this->get_version_();
   this->set_config_mode_(false);
-  ESP_LOGCONFIG(TAG, "Firmware Version : %u.%u.%u%u%u%u", this->version_[0], this->version_[1], this->version_[2],
-                this->version_[3], this->version_[4], this->version_[5]);
+  ESP_LOGCONFIG(TAG, "Firmware Version : %u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
   ESP_LOGCONFIG(TAG, "LD2410 setup complete.");
 }
 
@@ -194,15 +186,20 @@ void LD2410Component::handle_ack_data_(uint8_t *buffer, int len) {
       ESP_LOGV(TAG, "Handled Disabled conf command");
       break;
     case lowbyte(CMD_VERSION):
-      ESP_LOGV(TAG, "FW Version is: %u.%u.%u%u%u%u", buffer[13], buffer[12], buffer[17], buffer[16], buffer[15],
-               buffer[14]);
-      this->version_[0] = buffer[13];
-      this->version_[1] = buffer[12];
-      this->version_[2] = buffer[17];
-      this->version_[3] = buffer[16];
-      this->version_[4] = buffer[15];
-      this->version_[5] = buffer[14];
+      {
+        char ver[22];
+        this->version_major_ = buffer[13];
+        this->version_minor_ = buffer[12];
+        this->version_build_ = (buffer[17]<<24) | (buffer[16]<<16) | (buffer[15]<<8) | buffer[14];
+        snprintf(ver, 22, "%u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
+        ESP_LOGV(TAG, "FW Version is: %s", ver);
+#ifdef USE_TEXT_SENSOR
+        if (this->fw_version_sensor_ != nullptr) {
+          this->fw_version_sensor_->publish_state(ver);
+        }
+#endif
 
+      }
       break;
     case lowbyte(CMD_GATE_SENS):
       ESP_LOGV(TAG, "Handled sensitivity command");
@@ -310,6 +307,16 @@ void LD2410Component::set_gate_threshold_(uint8_t gate, uint8_t motionsens, uint
                        0x02, 0x00, lowbyte(stillsens),  highbyte(stillsens),  0x00, 0x00};
   this->send_command_(CMD_GATE_SENS, value, 18);
 }
+
+#ifdef USE_NUMBER
+void LD2410Component::set_threshold(uint8_t gate, enum LD2410ThresType type, uint8_t thres) {
+  if ( gate > 8 ) return;
+  if ( thres == (type == LD2410ThresMove ? rg_move_threshold_[gate] : rg_still_threshold_[gate]) ) return;
+  this->set_config_mode_(true);
+  set_gate_threshold_ ( gate, type == LD2410ThresMove ? thres: rg_move_threshold_[gate], type == LD2410ThresStill ? thres: rg_still_threshold_[gate]);
+  this->set_config_mode_(false);
+}
+#endif
 
 }  // namespace ld2410
 }  // namespace esphome
