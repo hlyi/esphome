@@ -25,7 +25,7 @@ void LD2410Component::dump_config() {
   this->set_config_mode_(true);
   this->get_version_();
   this->set_config_mode_(false);
-  ESP_LOGCONFIG(TAG, "  Firmware Version : %u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
+  ESP_LOGCONFIG(TAG, "  Firmware Version : %u.%u.%08x", this->version_major_, this->version_minor_, this->version_build_);
 }
 
 void LD2410Component::setup() {
@@ -38,7 +38,7 @@ void LD2410Component::setup() {
   }
   this->get_version_();
   this->set_config_mode_(false);
-  ESP_LOGCONFIG(TAG, "Firmware Version : %u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
+  ESP_LOGCONFIG(TAG, "Firmware Version : %u.%u.%08x", this->version_major_, this->version_minor_, this->version_build_);
   ESP_LOGCONFIG(TAG, "LD2410 setup complete.");
 }
 
@@ -191,7 +191,7 @@ void LD2410Component::handle_ack_data_(uint8_t *buffer, int len) {
         this->version_major_ = buffer[13];
         this->version_minor_ = buffer[12];
         this->version_build_ = (buffer[17]<<24) | (buffer[16]<<16) | (buffer[15]<<8) | buffer[14];
-        snprintf(ver, 22, "%u.%u.%u", this->version_major_, this->version_minor_, this->version_build_);
+        snprintf(ver, 22, "%u.%u.%08x", this->version_major_, this->version_minor_, this->version_build_);
         ESP_LOGV(TAG, "FW Version is: %s", ver);
 #ifdef USE_TEXT_SENSOR
         if (this->fw_version_sensor_ != nullptr) {
@@ -206,8 +206,14 @@ void LD2410Component::handle_ack_data_(uint8_t *buffer, int len) {
       break;
     case lowbyte(CMD_QUERY):  // Query parameters response
     {
-      if (buffer[10] != 0xAA)
+#ifdef USE_TEXT_SENSOR
+	    char msg[300];
+	    int msgcnt = 0;
+#endif
+      if (buffer[10] != 0xAA) {
+        if (this->info_query_sensor_ != nullptr) this->fw_version_sensor_->publish_state("Error Query Info");
         return;  // value head=0xAA
+      }
       /*
         Moving distance range: 13th byte
         Still distance range: 14th byte
@@ -219,12 +225,27 @@ void LD2410Component::handle_ack_data_(uint8_t *buffer, int len) {
         Moving Sensitivities: 15~23th bytes
         Still Sensitivities: 24~32th bytes
       */
+#ifdef USE_TEXT_SENSOR
+      if ( this->info_query_sensor_ != nullptr) msgcnt += snprintf(msg+msgcnt, 200-msgcnt, "Max Moving Distance:%u; Max Still Distance:%u; Moving: ",buffer[12],buffer[13]);
+#endif
       for (int i = 0; i < 9; i++) {
         moving_sensitivities[i] = buffer[14 + i];
+#ifdef USE_TEXT_SENSOR
+        if ( this->info_query_sensor_ != nullptr) msgcnt += snprintf(msg+msgcnt, 200-msgcnt, "%u%c", moving_sensitivities[i], i==8 ? ';' : ',');
+#endif
       }
+#ifdef USE_TEXT_SENSOR
+        if ( this->info_query_sensor_ != nullptr) msgcnt += snprintf(msg+msgcnt, 200-msgcnt, " Still: ");
+#endif
       for (int i = 0; i < 9; i++) {
         still_sensitivities[i] = buffer[23 + i];
+#ifdef USE_TEXT_SENSOR
+        if ( this->info_query_sensor_ != nullptr) msgcnt += snprintf(msg+msgcnt, 200-msgcnt, "%u%c", still_sensitivities[i], i==8 ? ';' : ',');
+#endif
       }
+#ifdef USE_TEXT_SENSOR
+        if ( this->info_query_sensor_ != nullptr) this->info_query_sensor_->publish_state(msg);
+#endif
       /*
         None Duration: 33~34th bytes
       */
@@ -264,6 +285,12 @@ void LD2410Component::set_config_mode_(bool enable) {
   uint8_t cmd = enable ? CMD_ENABLE_CONF : CMD_DISABLE_CONF;
   uint8_t cmd_value[2] = {0x01, 0x00};
   this->send_command_(cmd, enable ? cmd_value : nullptr, 2);
+}
+
+void LD2410Component::query_parameters() {
+  this->set_config_mode_(true);
+  this->send_command_(CMD_QUERY, nullptr, 0); 
+  this->set_config_mode_(false);
 }
 
 void LD2410Component::query_parameters_() { this->send_command_(CMD_QUERY, nullptr, 0); }
@@ -309,11 +336,37 @@ void LD2410Component::set_gate_threshold_(uint8_t gate, uint8_t motionsens, uint
 }
 
 #ifdef USE_NUMBER
-void LD2410Component::set_threshold(uint8_t gate, enum LD2410ThresType type, uint8_t thres) {
+void LD2410Component::set_threshold(uint8_t gate, enum LD2410NumType type, uint8_t thres) {
   if ( gate > 8 ) return;
+  if ( type != LD2410ThresMove && type != LD2410ThresStill ) return;
   if ( thres == (type == LD2410ThresMove ? rg_move_threshold_[gate] : rg_still_threshold_[gate]) ) return;
   this->set_config_mode_(true);
   set_gate_threshold_ ( gate, type == LD2410ThresMove ? thres: rg_move_threshold_[gate], type == LD2410ThresStill ? thres: rg_still_threshold_[gate]);
+  this->set_config_mode_(false);
+}
+
+void LD2410Component::set_max_distances_timeout(enum LD2410NumType type, uint16_t val) {
+  uint8_t move_dist = max_move_distance_;
+  uint8_t still_dist = max_still_distance_;
+  uint8_t timeo = timeout_;
+  switch(type){
+    case LD2410MaxDistMove:
+      if ( move_dist == (val&0xff) ) return;
+      move_dist = val;
+      break;
+    case LD2410MaxDistStill:
+      if ( still_dist == (val&0xff) ) return;
+      still_dist = val;
+      break;
+    case LD2410Timeout:
+      if ( timeo == val ) return;
+      timeo = val;
+      break;
+    default:
+      return;
+  }
+  this->set_config_mode_(true);
+  set_max_distances_timeout_(move_dist, still_dist, timeo );
   this->set_config_mode_(false);
 }
 #endif

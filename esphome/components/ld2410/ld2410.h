@@ -17,8 +17,9 @@
 namespace esphome {
 namespace ld2410 {
 
-enum LD2410ThresType {
-	LD2410ThresMove, LD2410ThresStill
+enum LD2410NumType {
+	LD2410ThresMove, LD2410ThresStill,
+	LD2410MaxDistMove, LD2410MaxDistStill, LD2410Timeout
 };
 
 #define CHECK_BIT(var, pos) (((var) >> (pos)) & 1)
@@ -89,6 +90,7 @@ class LD2410Component : public Component, public uart::UARTDevice {
 
 #ifdef USE_TEXT_SENSOR
   void set_fw_version_sensor(text_sensor::TextSensor *sens) { this->fw_version_sensor_ = sens; };
+  void set_info_query_sensor(text_sensor::TextSensor *sens) { this->info_query_sensor_ = sens; };
 #endif
 
   void set_timeout(uint16_t value) { this->timeout_ = value; };
@@ -117,12 +119,31 @@ class LD2410Component : public Component, public uart::UARTDevice {
     this->rg_still_threshold_[8] = rg8_still;
   };
 
+  void query_parameters();
 #ifdef USE_NUMBER
-  void set_threshold(uint8_t gate, enum LD2410ThresType type, uint8_t value);
-  uint8_t get_threshold( uint8_t gate, enum LD2410ThresType type ) {
+  void set_threshold (uint8_t gate, enum LD2410NumType type, uint8_t value);
+  void set_max_distances_timeout (  enum LD2410NumType type, uint16_t value);
+  uint8_t get_threshold( uint8_t gate, enum LD2410NumType type ) {
     if ( gate > 8 ) return 0;
+    if ( type != LD2410ThresMove && type != LD2410ThresStill ) return 0;
     return type == LD2410ThresMove ? rg_move_threshold_[gate] : rg_still_threshold_[gate];
   };
+  uint16_t get_max_distance_timeout(enum LD2410NumType type) {
+    switch (type) {
+      case LD2410MaxDistMove:
+        return this->max_move_distance_;
+        break;
+      case LD2410MaxDistStill:
+        return this->max_still_distance_;
+        break;
+      case LD2410Timeout:
+        return this->timeout_;
+        break;
+      default:
+        return 0;
+    }
+    return 0;
+  }
 #endif
 
   int moving_sensitivities[9] = {0};
@@ -138,6 +159,7 @@ class LD2410Component : public Component, public uart::UARTDevice {
 #endif
 #ifdef USE_TEXT_SENSOR
   text_sensor::TextSensor *fw_version_sensor_{nullptr};
+  text_sensor::TextSensor *info_query_sensor_{nullptr};
 #endif
 
   std::vector<uint8_t> rx_buffer_;

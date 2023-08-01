@@ -7,27 +7,22 @@ namespace ld2410 {
 static const char *const TAG = "ld2410.number";
 
 void LD2410Number::setup() {
+  uint16_t val;
   if ( parent_ == nullptr ) return;
-  this->publish_state(parent_->get_threshold(this->gate_num_, this->gate_type_));
-/*
-  this->parent_->register_listener(this->number_id_, [this](const LD2410Datapoint &datapoint) {
-    if (datapoint.type == LD2410DatapointType::INTEGER) {
-      ESP_LOGV(TAG, "MCU reported number %u is: %d", datapoint.id, datapoint.value_int);
-      this->publish_state(datapoint.value_int);
-    } else if (datapoint.type == LD2410DatapointType::ENUM) {
-      ESP_LOGV(TAG, "MCU reported number %u is: %u", datapoint.id, datapoint.value_enum);
-      this->publish_state(datapoint.value_enum);
-    }
-    this->type_ = datapoint.type;
-  });
-  */
+  if ( gate_type_ == LD2410ThresMove || gate_type_ == LD2410ThresStill ) val = parent_->get_threshold(this->gate_num_, this->gate_type_);
+  else val = parent_->get_max_distance_timeout(this->gate_type_);
+  this->publish_state(val);
 }
 
 void LD2410Number::control(float value) {
   if ( parent_ == nullptr ) return;
-  parent_->set_threshold(this->gate_num_, this->gate_type_ , (int) value );
-
-  ESP_LOGV(TAG, "Setting number to gate %u, type %u: %f", this->gate_num_, this->gate_type_, value);
+  if ( gate_type_ == LD2410ThresMove || gate_type_ == LD2410ThresStill ) {
+    parent_->set_threshold(this->gate_num_, this->gate_type_ , (uint8_t) value );
+    ESP_LOGV(TAG, "Setting number to gate %u, type %u: %f", this->gate_num_, this->gate_type_, value);
+  }else{
+    parent_->set_max_distances_timeout(this->gate_type_ , (uint16_t) value );
+    ESP_LOGV(TAG, "Setting type %u: %f", this->gate_type_, value);
+  }
   this->publish_state(value);
 }
 

@@ -9,7 +9,7 @@ namespace ld2410 {
 
 class LD2410Number : public number::Number, public Component {
  public:
-  LD2410Number ( uint8_t num, enum LD2410ThresType type  ) { gate_num_ = num; gate_type_ = type;};
+  LD2410Number ( uint8_t num, enum LD2410NumType type  ) { gate_num_ = num; gate_type_ = type;};
   void setup() override;
   void dump_config() override;
 
@@ -20,7 +20,7 @@ class LD2410Number : public number::Number, public Component {
 
   LD2410Component *parent_;
   uint8_t gate_num_{0};
-  enum LD2410ThresType gate_type_{LD2410ThresMove};
+  enum LD2410NumType gate_type_{LD2410ThresMove};
 };
 
 }  // namespace tuya
