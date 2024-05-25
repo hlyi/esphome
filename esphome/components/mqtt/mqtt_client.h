@@ -64,6 +64,7 @@ struct Availability {
 enum MQTTDiscoveryUniqueIdGenerator {
   MQTT_LEGACY_UNIQUE_ID_GENERATOR = 0,
   MQTT_MAC_ADDRESS_UNIQUE_ID_GENERATOR,
+  MQTT_DEVICE_NAME_UNIQUE_ID_GENERATOR,
 };
 
 /// available discovery object_id generators
