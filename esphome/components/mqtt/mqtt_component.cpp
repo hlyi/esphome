@@ -122,6 +122,12 @@ bool MQTTComponent::send_discovery_() {
             root[MQTT_PAYLOAD_NOT_AVAILABLE] = this->availability_->payload_not_available;
         }
 
+        const std::string &node_name = App.get_name();
+        std::string node_friendly_name = App.get_friendly_name();
+        if (node_friendly_name.empty()) {
+          node_friendly_name = node_name;
+        }
+
         std::string unique_id = this->unique_id();
         const MQTTDiscoveryInfo &discovery_info = global_mqtt_client->get_discovery_info();
         if (!unique_id.empty()) {
@@ -132,6 +138,8 @@ bool MQTTComponent::send_discovery_() {
             sprintf(friendly_name_hash, "%08" PRIx32, fnv1_hash(this->friendly_name()));
             friendly_name_hash[8] = 0;  // ensure the hash-string ends with null
             root[MQTT_UNIQUE_ID] = get_mac_address() + "-" + this->component_type() + "-" + friendly_name_hash;
+	  } else if (discovery_info.unique_id_generator == MQTT_DEVICE_NAME_UNIQUE_ID_GENERATOR ) {
+            root[MQTT_UNIQUE_ID] = "ESP" + this->component_type() + str_sanitize(node_friendly_name) + this->get_default_object_id_();
           } else {
             // default to almost-unique ID. It's a hack but the only way to get that
             // gorgeous device registry view.
@@ -139,14 +147,9 @@ bool MQTTComponent::send_discovery_() {
           }
         }
 
-        const std::string &node_name = App.get_name();
         if (discovery_info.object_id_generator == MQTT_DEVICE_NAME_OBJECT_ID_GENERATOR)
           root[MQTT_OBJECT_ID] = node_name + "_" + this->get_default_object_id_();
 
-        std::string node_friendly_name = App.get_friendly_name();
-        if (node_friendly_name.empty()) {
-          node_friendly_name = node_name;
-        }
         const std::string &node_area = App.get_area();
 
         JsonObject device_info = root.createNestedObject(MQTT_DEVICE);
